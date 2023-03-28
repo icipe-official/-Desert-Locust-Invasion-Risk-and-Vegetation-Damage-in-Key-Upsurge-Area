@@ -1,0 +1,171 @@
+// This script is used to calculate the NDVI for vegetation change detection in Turkana County, Kenya for the period
+// between 2019 and 2020 in the months of May, June and July.
+// Aims to inform the vegetation damage assessment due to desert locust invasion in 2020 in the study area
+// Author: Raphael Mongare
+// Date: March 2021
+// Platform: Google Earth Engine (GEE)
+
+// Define Area of Interest
+// Here is the link to the AoI -Turkana county shapefile adapted in this study as 'table'
+// https://code.earthengine.google.com/?asset=users/rahaelmongare2017/Turkana
+var AoI = table; // Table = Turkana county shapefile
+
+// Add the AoI into the map panel
+Map.addLayer(AoI, {min: 0, max: 1}, 'AoI');
+
+// Create a NDVI function to add the layer in every image
+var NDVI = function(image) {
+  return image
+    .addBands (image.normalizedDifference (['B8', 'B4']).rename ('NDVI')).float()};
+    
+//***************************************** FOR July 2019 images **************************************************************
+    
+// Load Sentinel 2-Level 2 collection; add NDVI band and filter by dates and boundary
+// Adjust the timeline accordingly
+var S2_L2A = imageCollection.map(NDVI).filterDate('2019-07-01', '2019-07-31').filterBounds(AoI);
+
+// Print to console
+print(S2_L2A, 'S2 Image Collection');
+
+// Filter images with a chosen percentage of clouds
+var S2_L2A_Filter = S2_L2A.filter(ee.Filter.lt ('CLOUDY_PIXEL_PERCENTAGE', 20));
+
+// Print to check number of images available
+print(S2_L2A_Filter, 'S2 Image Collection Filtered');
+
+// Use function to mask clouds in S2 Imagery using SCL layer-for Sentinel 2-Level 2A, or QA60 for Level 1C and blue band, then add small additional buffer
+var cloudMask_S2 = function(image) {
+  var quality = image.select('QA60'); //Using QA60 for Sentinel 2 Level 1C image collections.
+  var blueBand = image.select('B2');    // blue band of Sentinel-2 to mask additional cloud shadows
+  var cloud = quality.lte(1).or(quality.eq(3)).or(quality.eq(7)).or(quality.eq(8)).or(quality.eq(9)).or(quality.eq(11)).or(blueBand.lt(100));
+  // add a small buffer
+  var cloudMask = cloud.fastDistanceTransform(2,"pixels","squared_euclidean").gt(0.7);
+  var mask = cloudMask.not();
+  return image.updateMask(cloudMask);
+};
+
+// Apply cloud mask to the collection
+var S2_L2A_Filter_Masked = S2_L2A_Filter.map(cloudMask_S2);
+
+// Select the NDVI band only
+ var S2_L2A_NDVI = S2_L2A_Filter_Masked.select('NDVI');
+
+// Convert the images to a list that you can select and visualize
+var listOfImages = S2_L2A_NDVI.toList(S2_L2A_NDVI.size());
+print('List',listOfImages);
+
+// Select three images from the list and visualize
+var NDVI_1 = ee.Image(listOfImages.get(0));
+var NDVI_2 = ee.Image(listOfImages.get(1));
+var NDVI_3 = ee.Image(listOfImages.get(2));
+
+// Define the visualizing parameters
+var ndviPalette = ['FFFFFF', 'CE7E45', 'DF923D', 'F1B555', 'FCD163', '99B718',
+               '74A901', '66A000', '529400', '3E8601', '207401', '056201',
+               '004C00', '023B01', '012E01', '011D01', '011301'];
+          
+//Create an image composites through the month
+var June_2018 = S2_L2A_NDVI.filterDate('2019-07-01','2019-07-31').median();
+
+
+
+//***************************************** FOR JUNE 2019 image ***************************************************
+//**************************Duplicate the above script to cater for the second period for change calculation ************************************
+
+// Load Sentinel 2-Level 2 collection; add NDVI band and filter by dates and boundary
+var S2_L2A = imageCollection.map(NDVI).filterDate('2019-06-01', '2019-06-30').filterBounds(AoI);
+
+// Print to console
+print(S2_L2A, 'S2 Image Collection');
+
+// Filter images with a chosen percentage of clouds
+var S2_L2A_Filter = S2_L2A.filter(ee.Filter.lt ('CLOUDY_PIXEL_PERCENTAGE', 20));
+
+// Print to check number of images available
+print(S2_L2A_Filter, 'S2 Image Collection Filtered');
+
+// Use function to mask clouds in S2 Imagery using SCL layer-for Sentinel 2-Level 2A, or QA60 for Level 1C and blue band, then add small additional buffer
+var cloudMask_S2 = function(image) {
+  var quality = image.select('QA60'); // using QA60 for Sentinel 2 Level 1C image collections.
+  var blueBand = image.select('B2');    // blue band of Sentinel-2 to mask additional cloud shadows
+  var cloud = quality.lte(1).or(quality.eq(3)).or(quality.eq(7)).or(quality.eq(8)).or(quality.eq(9)).or(quality.eq(11)).or(blueBand.lt(100));
+  // add a small buffer
+  var cloudMask = cloud.fastDistanceTransform(2,"pixels","squared_euclidean").gt(0.7);
+  var mask = cloudMask.not();
+  return image.updateMask(cloudMask);
+};
+
+//apply cloud mask to the collection
+var S2_L2A_Filter_Masked = S2_L2A_Filter.map(cloudMask_S2);
+
+ //select the NDVI band only
+ var S2_L2A_NDVI = S2_L2A_Filter_Masked.select('NDVI');
+ 
+ // Convert the images to a list that you can select and visualize
+var listOfImagesMay = S2_L2A_NDVI.toList(S2_L2A_NDVI.size());
+print('List',listOfImagesMay);
+
+/// select three images from the list and visualize
+var NDVI_1 = ee.Image(listOfImages.get(0));
+var NDVI_2 = ee.Image(listOfImages.get(1));
+var NDVI_3 = ee.Image(listOfImages.get(2));
+
+//visualizing parameters
+var ndviPalette = ['FFFFFF', 'CE7E45', 'DF923D', 'F1B555', 'FCD163', '99B718',
+               '74A901', '66A000', '529400', '3E8601', '207401', '056201',
+               '004C00', '023B01', '012E01', '011D01', '011301'];
+          
+//Image composites through the month
+var May_2018 = S2_L2A_NDVI. filterDate('2019-06-01','2019-06-30').median();
+
+
+//Visualize the median NDVI composite
+Map.addLayer(May_2018.clip(AoI), {min:-1, max: 1, palette: ndviPalette}, 'May_2018');
+Map.addLayer(June_2018.clip(AoI), {min:-1, max: 1, palette: ndviPalette}, 'June_2018');
+
+///Visualization params
+var ndviPar = {min: -1, max: 1, palette: ['blue', 'white', 'green']};
+var difPar = {min: -1, max: 1, palette:['red','white','green']};
+Map.centerObject(AoI, 7);
+Map.addLayer(AoI, {}, "ROI");
+
+//Map.addLayer(June_2019, ndviPar, "June_2019");
+//Map.addLayer(July_2019, ndviPar, "July_2019");
+
+//Subtract the NDVI images for change detection
+
+var NDVIdiff = May_2018.subtract(June_2018);
+Map.addLayer(NDVIdiff.clip(AoI), difPar, "June-July change");
+
+// Adding a mask to retain just the negative values
+var lowNDVImask = NDVIdiff.lt(0);
+var lowNDVI = NDVIdiff.updateMask(lowNDVImask);
+Map.addLayer(lowNDVI,difPar,"low NDVI only");
+
+///Chart the NDVI values for the different periods
+
+var chart = ui.Chart.image.series({
+  imageCollection: listOfImagesMay,
+  region: geometry,
+  reducer: ee.Reducer.mean(),
+  scale: 5000
+}).setOptions({
+      lineWidth: 1.5,
+      title: 'NDVI Time Series for Point 1 from 1st Oct 2021 to 31st Oct 2022',
+      interpolateNulls: true,
+      curveType: 'function',
+      vAxis: {title: 'NDVI'},
+      hAxis: {title: '', format: 'MMM-YYYY'}
+    });
+print(chart);
+
+print(NDVIdiff);
+
+//Export data to drive
+Export.image.toDrive ({ 
+  image: June_2018.clip(AoI),
+  description: 'NDVI_June_2018',
+  scale: 30,
+  region: AoI,
+  maxPixels: 5000000000,
+});
